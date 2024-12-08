@@ -20,7 +20,7 @@ export async function estimateGasFee(factory: ContractFactory, params: any[]) {
 
 async function main() {
 
-    // npx hardhat run ./scripts/deploy_BalancerHelper.ts --network ...
+    // npx hardhat run ./scripts/estimate.ts --network ...
 
     const BH_KEEPER: string = readENV("BH_KEEPER");
     const BH_SAFE = readENV("BH_SAFE");
