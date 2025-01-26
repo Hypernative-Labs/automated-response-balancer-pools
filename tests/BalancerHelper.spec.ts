@@ -23,7 +23,7 @@ describe("BalancerHelper", () => {
         );
         await balancerHelper.waitForDeployment();
 
-        const addresses: string [] = [
+        const addresses: string[] = [
             await multisig.getAddress(),
             await balancerHelper.getAddress(),
             await aaveCont.getAddress()
@@ -31,60 +31,74 @@ describe("BalancerHelper", () => {
 
         await balancerHelper.connect(keeper).addPools(addresses);
 
-        return{
+        return {
             addresses, keeper, multisig, balancerHelper
         }
     }
 
     it("1. Should deploy the contract & populate the pools", async () => {
 
-        const {balancerHelper, addresses} = await loadFixture(deploy);
+        const { balancerHelper, addresses } = await loadFixture(deploy);
 
         const poolCount: bigint = await balancerHelper.poolCount();
         expect(Number(poolCount.toString())).to.equal(addresses.length);
 
-        const pools = await balancerHelper.getPools(0,3);
+        const pools = await balancerHelper.getPools(0, 3);
         expect(pools).to.deep.equal(addresses)
 
     });
 
     it("2. Should correctly delete the first pool", async () => {
-        const {balancerHelper, keeper, addresses} = await loadFixture(deploy);
+        const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
         await balancerHelper.connect(keeper).deletePool(0);
 
         const poolCount: bigint = await balancerHelper.poolCount();
         expect(Number(poolCount.toString())).to.equal(addresses.length - 1);
 
-        const pools = await balancerHelper.getPools(0,3);
+        const pools = await balancerHelper.getPools(0, 2);
         expect(!pools.includes(addresses[0]))
 
     });
 
     it("3. Should correctly delete a pool in the middle", async () => {
-        const {balancerHelper, keeper, addresses} = await loadFixture(deploy);
+        const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
         await balancerHelper.connect(keeper).deletePool(1);
 
         const poolCount: bigint = await balancerHelper.poolCount();
         expect(Number(poolCount.toString())).to.equal(addresses.length - 1);
 
-        const pools = await balancerHelper.getPools(0,3);
+        const pools = await balancerHelper.getPools(0, 2);
         expect(!pools.includes(addresses[1]))
 
     });
 
     it("4. Should correctly delete the last pool", async () => {
-        const {balancerHelper, keeper, addresses} = await loadFixture(deploy);
+        const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
         await balancerHelper.connect(keeper).deletePool(2);
 
         const poolCount: bigint = await balancerHelper.poolCount();
         expect(Number(poolCount.toString())).to.equal(addresses.length - 1);
 
-        const pools = await balancerHelper.getPools(0,3);
+        const pools = await balancerHelper.getPools(0, 2);
         expect(!pools.includes(addresses[2]))
 
+    });
+
+    it("5. Should delete all the pools", async () => {
+
+        const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
+
+        await balancerHelper.connect(keeper).deleteAllPools();
+
+        const poolCount = await balancerHelper.poolCount();
+        expect(poolCount).to.equal(0n);
+
+        await expect(balancerHelper.getPools(0, 3)).to.be.revertedWith(
+            "No available pools"
+        )
     });
 
 });
