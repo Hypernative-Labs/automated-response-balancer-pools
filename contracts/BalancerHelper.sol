@@ -18,7 +18,7 @@ contract BalancerHelper {
     uint256 public poolCount;
 
     /// @dev pool addresses hashmap
-    mapping(uint256 index => address) private _pools;
+    address[] public pools;
 
     modifier keeperOrSafe() {
         require(msg.sender == keeper || msg.sender == safe, ERROR_UNAUTHORIZED);
@@ -45,12 +45,12 @@ contract BalancerHelper {
     }
 
     /// @notice Saves a batch of pools
-    /// @param pools the added addresses
-    function addPools(address[] memory pools) external keeperOrSafe {
-        uint length = pools.length;
+    /// @param _pools the added addresses
+    function addPools(address[] memory _pools) external keeperOrSafe {
+        uint length = _pools.length;
 
         for (uint256 index = 0; index < length; index++) {
-            _addPool(pools[index]);
+            _addPool(_pools[index]);
         }
     }
 
@@ -60,13 +60,13 @@ contract BalancerHelper {
         // Step 0: Verify input
         if (index >= poolCount) revert("Out of index range");
         // Step 1: Notify the observers
-        emit PoolUpdated(index, _pools[index], "Deleted");
+        emit PoolUpdated(index, pools[index], "Deleted");
         // Step 2: Decrement the counter
         poolCount--;
         // Step 3: swap the last item with the removed one
-        _pools[index] = _pools[poolCount];
+        pools[index] = pools[poolCount];
         // Step 4: Delete the last item
-        delete _pools[poolCount];
+        pools.pop();
     }
 
     /// @notice Fetches a pool by its index
@@ -74,7 +74,7 @@ contract BalancerHelper {
     /// @param index the requested pool index
     function getPool(uint256 index) public view returns (address pool) {
         if (index >= poolCount) revert("Out of index range");
-        pool = _pools[index];
+        pool = pools[index];
     }
 
     /// @notice Fetches an array of pool addresses
@@ -84,15 +84,15 @@ contract BalancerHelper {
     function getPools(
         uint256 from,
         uint256 to
-    ) public view returns (address[] memory pools) {
+    ) public view returns (address[] memory _pools) {
         // Step 0: Verify input
         (from, to) = _rangeCheck(from, to);
         // Step 1: allocate memory
-        pools = new address[](to - from);
+        _pools = new address[](to - from);
         uint256 counter = 0;
         // Step 2: Populate the array
         for (uint256 index = from; index < to; index++) {
-            pools[counter] = _pools[index];
+            _pools[counter] = pools[index];
             counter++;
         }
     }
@@ -107,7 +107,7 @@ contract BalancerHelper {
         // Step 2: pause
         for (uint256 index = from; index < to; index++) {
             GnosisSafe(payable(safe)).execTransactionFromModule(
-                _pools[index],
+                pools[index],
                 0,
                 callData,
                 Enum.Operation.Call
@@ -121,10 +121,7 @@ contract BalancerHelper {
         // Step 0: Verify input
         _expectContract(newPool, "newPool is not a contract");
         // Step 1: Update storage
-        _pools[poolCount] = newPool;
-        // Step 2: Notify the observers
-        emit PoolUpdated(poolCount, newPool, "Added");
-        // Step 3: increment the counter
+        pools.push(newPool);
         poolCount++;
     }
 
