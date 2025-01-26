@@ -69,6 +69,18 @@ contract BalancerHelper {
         pools.pop();
     }
 
+    function deleteAllPools() external keeperOrSafe {
+        address[] storage _pools = pools;
+        uint256 length = _pools.length;
+        for (uint256 i = 0; i < length; ) {
+            _pools[i] = address(0);
+            unchecked {
+                ++i;
+            }
+            poolCount--;
+        }
+    }
+
     /// @notice Fetches a pool by its index
     /// @dev reverts if index >= poolCount
     /// @param index the requested pool index
