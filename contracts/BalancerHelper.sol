@@ -127,8 +127,23 @@ contract BalancerHelper {
         }
     }
 
+    /// @notice Rplaces the keeper address
+    /// @param newKeeper the address of the new keeper
+    function updateKeeper(address newKeeper) external keeperOrSafe {
+        _expectNonZeroAddress(newKeeper, "Zerro address");
+        keeper = newKeeper;
+    }
+
+    /// @notice Rplaces the multisig address
+    /// @param newSafe the address of the new gnosis safe
+    function updateSafe(address newSafe) external keeperOrSafe {
+        _expectNonZeroAddress(newSafe, "Zerro address");
+        safe = newSafe;
+    }
+
     //      P R I V A T E   F U N C T I O N S
 
+    /// @dev updates a pool address
     function _addPool(address newPool) private {
         // Step 0: Verify input
         _expectContract(newPool, "newPool is not a contract");
@@ -151,6 +166,7 @@ contract BalancerHelper {
         if (a.code.length == 0) revert(message);
     }
 
+    /// @dev `from` & `to` params verification
     function _rangeCheck(
         uint256 from,
         uint256 to
