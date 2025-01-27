@@ -127,17 +127,17 @@ contract BalancerHelper {
         }
     }
 
-    /// @notice Rplaces the keeper address
+    /// @notice Replaces the keeper address
     /// @param newKeeper the address of the new keeper
     function updateKeeper(address newKeeper) external keeperOrSafe {
-        _expectNonZeroAddress(newKeeper, "Zerro address");
+        _expectNonZeroAddress(newKeeper, "Zero address");
         keeper = newKeeper;
     }
 
-    /// @notice Rplaces the multisig address
+    /// @notice Replaces the multisig address
     /// @param newSafe the address of the new gnosis safe
     function updateSafe(address newSafe) external keeperOrSafe {
-        _expectNonZeroAddress(newSafe, "Zerro address");
+        _expectNonZeroAddress(newSafe, "Zero address");
         safe = newSafe;
     }
 
