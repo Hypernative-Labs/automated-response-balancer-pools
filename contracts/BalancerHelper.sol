@@ -165,13 +165,12 @@ contract BalancerHelper {
         // Step 1: Decrement the counter
         poolCount--;
         // Step 2: swap the last item with the removed one
-        address poolToDelete = pools[index];
+        emit PoolUpdated(index, pools[index], "Deleted");
         
         pools[index] = pools[poolCount];
         
         // Step 3: Delete the last item
         pools.pop();
-        emit PoolUpdated(index, poolToDelete, "Deleted");
     }
 
     /// @dev Reverts if `a` is address zero
