@@ -87,11 +87,11 @@ describe("BalancerHelper", () => {
 
     });
 
-    it("5. Should delete all the pools", async () => {
+    it("5. Should delete a range of pools the pools", async () => {
 
         const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
-        await balancerHelper.connect(keeper).deleteAllPools();
+        await balancerHelper.connect(keeper).deletePools(0,2);
 
         const poolCount = await balancerHelper.poolCount();
         expect(poolCount).to.equal(0n);
