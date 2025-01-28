@@ -56,28 +56,43 @@ contract BalancerHelper {
 
     /// @notice Delets a pool by index
     /// @param index the position of the pool address in the list
-    function deletePool(uint256 index) external keeperOrSafe {
+    /// @return deleted true if deleted | false otherwise
+    function deletePool(
+        uint256 index
+    ) external keeperOrSafe returns (bool deleted) {
         // Step 0: Verify input
         if (index >= poolCount) revert("Out of index range");
-        // Step 1: Notify the observers
-        emit PoolUpdated(index, pools[index], "Deleted");
-        // Step 2: Decrement the counter
-        poolCount--;
-        // Step 3: swap the last item with the removed one
-        pools[index] = pools[poolCount];
-        // Step 4: Delete the last item
-        pools.pop();
+        // Step 1: Trigger the deletion logic
+        deleted = _deletePool(index);
     }
 
-    function deleteAllPools() external keeperOrSafe {
-        address[] storage _pools = pools;
-        uint256 length = _pools.length;
-        for (uint256 i = 0; i < length; ) {
-            _pools[i] = address(0);
+    /// @notice  Delets a range of pools
+    /// @param from the initial index
+    /// @param to the final index
+    /// @return deleted the amomunt of deleted pools
+    function deletePools(
+        uint256 from,
+        uint256 to
+    ) external keeperOrSafe returns (uint256 deleted) {
+        // Step 0: Verify input
+        (from, to) = _rangeCheck(from, to);
+        // Step 1 Allocate memory
+        bool success = false;
+        // Step 2: Deletion loop
+        for (uint256 i = from; i < to + 1; ) {
+            success = _deletePool(i);
+            if (success) {
+                deleted++;
+                to--;
+            }
             unchecked {
                 ++i;
             }
-            poolCount--;
+        }
+        // Step 3: Delete the first element
+        success = _deletePool(from);
+        if (success) {
+            deleted++;
         }
     }
 
@@ -150,6 +165,25 @@ contract BalancerHelper {
         // Step 1: Update storage
         pools.push(newPool);
         poolCount++;
+    }
+
+    /// @dev A single pool deletion logic
+    function _deletePool(uint256 index) private returns (bool deleted) {
+        address[] storage _pools = pools;
+        // Step 0: Check the
+        if (_pools[index] != address(0)) {
+            // Step 1: Notify the observers
+            emit PoolUpdated(index, pools[index], "Deleted");
+            // Step 2: Decrement the counter
+            poolCount--;
+            // Step 3: swap the last item with the removed one
+            _pools[index] = _pools[poolCount];
+            // Step 4: Delete the last item
+            _pools.pop();
+
+            return true;
+        }
+        return false;
     }
 
     /// @dev Reverts if `a` is address zero
