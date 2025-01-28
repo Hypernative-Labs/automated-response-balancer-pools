@@ -156,4 +156,14 @@ describe("BalancerHelper", () => {
         console.log("pools %s", pools);
     });
 
+    it("6. Should delete all the pools in one transaction", async () => {
+        const { balancerHelper, keeper } = await loadFixture(deploy);
+        await balancerHelper.connect(keeper).deleteAllPools();
+        const poolCount = await balancerHelper.poolCount();
+        expect(poolCount).to.equal(0n);
+        await expect(balancerHelper.getPools(0, 3)).to.be.revertedWith(
+            "No available pools"
+        );
+    });
+
 });
