@@ -18,7 +18,7 @@ contract BalancerHelper {
     uint256 public poolCount;
 
     /// @dev pool addresses hashmap
-    mapping(uint256 index => address) private _pools;
+    address[] public pools;
 
     modifier keeperOrSafe() {
         require(msg.sender == keeper || msg.sender == safe, ERROR_UNAUTHORIZED);
@@ -45,28 +45,48 @@ contract BalancerHelper {
     }
 
     /// @notice Saves a batch of pools
-    /// @param pools the added addresses
-    function addPools(address[] memory pools) external keeperOrSafe {
-        uint length = pools.length;
+    /// @param _pools the added addresses
+    function addPools(address[] memory _pools) external keeperOrSafe {
+        uint length = _pools.length;
 
         for (uint256 index = 0; index < length; index++) {
-            _addPool(pools[index]);
+            _addPool(_pools[index]);
         }
     }
 
     /// @notice Delets a pool by index
     /// @param index the position of the pool address in the list
-    function deletePool(uint256 index) external keeperOrSafe {
+    function deletePool(
+        uint256 index
+    ) external keeperOrSafe {
         // Step 0: Verify input
         if (index >= poolCount) revert("Out of index range");
-        // Step 1: Notify the observers
-        emit PoolUpdated(index, _pools[index], "Deleted");
-        // Step 2: Decrement the counter
-        poolCount--;
-        // Step 3: swap the last item with the removed one
-        _pools[index] = _pools[poolCount];
-        // Step 4: Delete the last item
-        delete _pools[poolCount];
+        // Step 1: Trigger the deletion logic
+        _deletePool(index);
+    }
+
+    /// @notice  Delets a range of pools
+    /// @param from the initial index
+    /// @param to the final index
+    function deletePools(
+        uint256 from,
+        uint256 to
+    ) external keeperOrSafe {
+        // Step 0: Verify input
+        (from, to) = _rangeCheck(from, to);
+        // Step 1: Deletion loop
+        for (uint256 i = to; i > from; --i) {    
+            _deletePool(i - 1);
+        }
+    }
+
+        /// @notice Deletes all the pool addresses
+    function deleteAllPools() external keeperOrSafe {
+        uint256 length = pools.length;
+        for (uint256 i = 0; i < length; ++i) {
+            pools.pop();
+        }
+        poolCount = 0;
     }
 
     /// @notice Fetches a pool by its index
@@ -74,7 +94,7 @@ contract BalancerHelper {
     /// @param index the requested pool index
     function getPool(uint256 index) public view returns (address pool) {
         if (index >= poolCount) revert("Out of index range");
-        pool = _pools[index];
+        pool = pools[index];
     }
 
     /// @notice Fetches an array of pool addresses
@@ -84,15 +104,15 @@ contract BalancerHelper {
     function getPools(
         uint256 from,
         uint256 to
-    ) public view returns (address[] memory pools) {
+    ) public view returns (address[] memory _pools) {
         // Step 0: Verify input
         (from, to) = _rangeCheck(from, to);
         // Step 1: allocate memory
-        pools = new address[](to - from);
+        _pools = new address[](to - from);
         uint256 counter = 0;
         // Step 2: Populate the array
         for (uint256 index = from; index < to; index++) {
-            pools[counter] = _pools[index];
+            _pools[counter] = pools[index];
             counter++;
         }
     }
@@ -107,7 +127,7 @@ contract BalancerHelper {
         // Step 2: pause
         for (uint256 index = from; index < to; index++) {
             GnosisSafe(payable(safe)).execTransactionFromModule(
-                _pools[index],
+                pools[index],
                 0,
                 callData,
                 Enum.Operation.Call
@@ -115,17 +135,42 @@ contract BalancerHelper {
         }
     }
 
+    /// @notice Replaces the keeper address
+    /// @param newKeeper the address of the new keeper
+    function updateKeeper(address newKeeper) external keeperOrSafe {
+        _expectNonZeroAddress(newKeeper, "Zero address");
+        keeper = newKeeper;
+    }
+
+    /// @notice Replaces the multisig address
+    /// @param newSafe the address of the new gnosis safe
+    function updateSafe(address newSafe) external keeperOrSafe {
+        _expectNonZeroAddress(newSafe, "Zero address");
+        safe = newSafe;
+    }
+
     //      P R I V A T E   F U N C T I O N S
 
+    /// @dev updates a pool address
     function _addPool(address newPool) private {
         // Step 0: Verify input
         _expectContract(newPool, "newPool is not a contract");
         // Step 1: Update storage
-        _pools[poolCount] = newPool;
-        // Step 2: Notify the observers
-        emit PoolUpdated(poolCount, newPool, "Added");
-        // Step 3: increment the counter
+        pools.push(newPool);
         poolCount++;
+    }
+
+    /// @dev A single pool deletion logic
+    function _deletePool(uint256 index) private {
+        // Step 1: Decrement the counter
+        poolCount--;
+        // Step 2: swap the last item with the removed one
+        emit PoolUpdated(index, pools[index], "Deleted");
+        
+        pools[index] = pools[poolCount];
+        
+        // Step 3: Delete the last item
+        pools.pop();
     }
 
     /// @dev Reverts if `a` is address zero
@@ -142,6 +187,7 @@ contract BalancerHelper {
         if (a.code.length == 0) revert(message);
     }
 
+    /// @dev `from` & `to` params verification
     function _rangeCheck(
         uint256 from,
         uint256 to

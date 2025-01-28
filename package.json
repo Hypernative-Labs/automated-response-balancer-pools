@@ -10,7 +10,6 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.4.5",
-    "hardhat": "^2.22.6",
     "typescript": "^5.5.3"
   },
   "devDependencies": {
@@ -28,7 +27,7 @@
     "@types/mocha": ">=9.1.0",
     "chai": "^4.2.0",
     "ethers": "^6.4.0",
-    "hardhat": "^2.22.15",
+    "hardhat": "^2.22.18",
     "hardhat-gas-reporter": "^1.0.8",
     "solidity-coverage": "^0.8.1",
     "ts-node": "^10.9.2",
