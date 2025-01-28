@@ -80,6 +80,15 @@ contract BalancerHelper {
         }
     }
 
+        /// @notice Deletes all the pool addresses
+    function deleteAllPools() external keeperOrSafe {
+        uint256 length = pools.length;
+        for (uint256 i = 0; i < length; ++i) {
+            pools.pop();
+        }
+        poolCount = 0;
+    }
+
     /// @notice Fetches a pool by its index
     /// @dev reverts if index >= poolCount
     /// @param index the requested pool index
