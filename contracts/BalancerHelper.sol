@@ -4,6 +4,7 @@ pragma solidity >=0.8.0;
 import {IPool} from "./interfaces/IPool.sol";
 import {Enum} from "./GnosisSafeL2/common/Enum.sol";
 import {GnosisSafe} from "./GnosisSafeL2/GnosisSafe.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
 contract BalancerHelper {
     string private constant ERROR_UNAUTHORIZED = "Unauthorised call";
@@ -13,6 +14,9 @@ contract BalancerHelper {
 
     /// @notice Multisig contract
     address public safe;
+
+    /// @notice Balancer Vault address
+    address public vault;
 
     /// @notice the next pool index
     uint256 public poolCount;
@@ -25,13 +29,19 @@ contract BalancerHelper {
         _;
     }
 
+    modifier onlySafe() {
+        require(msg.sender == safe, ERROR_UNAUTHORIZED);
+        _;
+    }
+
     event PoolUpdated(uint256 index, address pool, string operation);
 
-    constructor(address newKeeper, address newSafe) {
+    constructor(address newVault, address newKeeper, address newSafe) {
         // Step 0: Verify input
         _expectNonZeroAddress(newKeeper, "newKeeper is address zero");
         _expectContract(newSafe, "newSafe is not a contract");
         // Step 1: Update storage
+        vault = newVault;
         keeper = newKeeper;
         safe = newSafe;
     }
@@ -39,18 +49,18 @@ contract BalancerHelper {
     //      P U B L I C   F U N C T I O N S
 
     /// @notice Saves a new pool
-    /// @param newPool the added address
-    function addPool(address newPool) public keeperOrSafe {
-        _addPool(newPool);
+    /// @param newPoolId the added poolId
+    function addPool(bytes32 newPoolId) public keeperOrSafe {
+        _addPool(newPoolId);
     }
 
     /// @notice Saves a batch of pools
-    /// @param _pools the added addresses
-    function addPools(address[] memory _pools) external keeperOrSafe {
-        uint length = _pools.length;
+    /// @param _poolIds the added poolIds
+    function addPools(bytes32[] memory _poolIds) external keeperOrSafe {
+        uint length = _poolIds.length;
 
         for (uint256 index = 0; index < length; index++) {
-            _addPool(_pools[index]);
+            _addPool(_poolIds[index]);
         }
     }
 
@@ -149,13 +159,20 @@ contract BalancerHelper {
         safe = newSafe;
     }
 
+    function updateVault(address newVault) external onlySafe {
+        _expectNonZeroAddress(newVault, "Zero address");
+        vault = newVault;
+    }
+
     //      P R I V A T E   F U N C T I O N S
 
     /// @dev updates a pool address
-    function _addPool(address newPool) private {
-        // Step 0: Verify input
-        _expectContract(newPool, "newPool is not a contract");
-        // Step 1: Update storage
+    function _addPool(bytes32 poolId) private {
+        // Step 0: Fetches the pool address
+        (address newPool, ) = IVault(vault).getPool(poolId);
+        // Step 1: Verify input
+        _expectContract(newPool, "poolId doesn't exist");
+        // Step 2: Update storage
         pools.push(newPool);
         poolCount++;
     }
