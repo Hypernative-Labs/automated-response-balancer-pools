@@ -4,10 +4,14 @@ const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helper
 
 
 describe("BalancerHelper", () => {
-
     async function deploy() {
+        var poolNonce = 0;
 
         const [keeper, admin] = await ethers.getSigners();
+
+        const Vault = await ethers.getContractFactory("MockVault");
+        const vault = await Vault.deploy();
+        await vault.waitForDeployment();
 
         const Multisig = await ethers.getContractFactory("GnosisSafe");
         const multisig = await Multisig.deploy();
@@ -16,24 +20,50 @@ describe("BalancerHelper", () => {
         const MockPool = await ethers.getContractFactory("MockPool");
         const mockPool1 = await MockPool.deploy();
         await mockPool1.waitForDeployment();
+        await vault.registerPool(await mockPool1.getAddress(), 0);
+        
+
+        
 
         const mockPool2 = await MockPool.deploy();
         await mockPool2.waitForDeployment();
 
+        await vault.registerPool(await mockPool2.getAddress(), 0);
+
+
+        const mockPool3 = await MockPool.deploy();
+        await mockPool3.waitForDeployment();
+        await vault.registerPool(await mockPool3.getAddress(), 0);
+
+        const mockPool4 = await MockPool.deploy();
+        await mockPool4.waitForDeployment();
+        await vault.registerPool(await mockPool4.getAddress(), 0);
+
+
         const BalancerHelper = await ethers.getContractFactory("BalancerHelper");
-        const balancerHelper = await BalancerHelper.deploy(
+        const balancerHelper = await BalancerHelper.deploy(vault.getAddress(),
             keeper.address, await multisig.getAddress()
         );
         await balancerHelper.waitForDeployment();
 
+        
         const addresses: string[] = [
-            await multisig.getAddress(),
-            await balancerHelper.getAddress(),
             await mockPool1.getAddress(),
-            await mockPool2.getAddress()
+            await mockPool2.getAddress(),
+            await mockPool3.getAddress(),
+            await mockPool4.getAddress()
         ]
 
-        await balancerHelper.connect(keeper).addPools(addresses);
+        const poolIds: string[] = [
+            await vault._toPoolId(await mockPool1.getAddress(), 0, 0),
+            await vault._toPoolId(await mockPool2.getAddress(), 0, 1),
+            await vault._toPoolId(await mockPool3.getAddress(), 0, 2),
+            await vault._toPoolId(await mockPool4.getAddress(), 0, 3)
+        ]
+
+
+
+        await balancerHelper.connect(keeper).addPools(poolIds);
 
         return {
             addresses, keeper, multisig, balancerHelper
@@ -52,20 +82,27 @@ describe("BalancerHelper", () => {
         const mockPool1 = await MockPool.deploy();
         await mockPool1.waitForDeployment();
 
-        const mockPool2 = await MockPool.deploy();
-        await mockPool2.waitForDeployment();
+
+        const Vault = await ethers.getContractFactory("MockVault");
+        const vault = await Vault.deploy();
+        await vault.waitForDeployment();
+        vault.registerPool(await mockPool1.getAddress(), 0);
 
         const BalancerHelper = await ethers.getContractFactory("BalancerHelper");
-        const balancerHelper = await BalancerHelper.deploy(
+        const balancerHelper = await BalancerHelper.deploy(vault.getAddress(),
             keeper.address, await multisig.getAddress()
         );
         await balancerHelper.waitForDeployment();
 
         const addresses: string[] = [
-            await mockPool1.getAddress()
+            await mockPool1.getAddress(),
         ]
 
-        await balancerHelper.connect(keeper).addPools(addresses);
+        const poolIds: string[] = [
+            await vault._toPoolId(await mockPool1.getAddress(), 0, 0),
+        ]
+
+        await balancerHelper.connect(keeper).addPools(poolIds);
 
         return {
             addresses, keeper, multisig, balancerHelper
@@ -75,6 +112,7 @@ describe("BalancerHelper", () => {
     it("1. Should deploy the contract & populate the pools", async () => {
 
         const { balancerHelper, addresses } = await loadFixture(deploy);
+        console.log("addresses %s", addresses);
 
         const poolCount: bigint = await balancerHelper.poolCount();
         expect(Number(poolCount.toString())).to.equal(addresses.length);
