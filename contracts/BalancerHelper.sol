@@ -94,6 +94,7 @@ contract BalancerHelper {
     function deleteAllPools() external keeperOrSafe {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; ++i) {
+            emit PoolUpdated(i, pools[i], "Deleted");
             pools.pop();
         }
         poolCount = 0;
@@ -174,6 +175,7 @@ contract BalancerHelper {
         _expectContract(newPool, "poolId doesn't exist");
         // Step 2: Update storage
         pools.push(newPool);
+        emit PoolUpdated(poolCount, newPool, "Added");
         poolCount++;
     }
 
@@ -182,12 +184,12 @@ contract BalancerHelper {
         // Step 1: Decrement the counter
         poolCount--;
         // Step 2: swap the last item with the removed one
-        emit PoolUpdated(index, pools[index], "Deleted");
-        
+        address deletedPool = pools[index];
         pools[index] = pools[poolCount];
         
         // Step 3: Delete the last item
         pools.pop();
+        emit PoolUpdated(poolCount, deletedPool, "Deleted");
     }
 
     /// @dev Reverts if `a` is address zero
