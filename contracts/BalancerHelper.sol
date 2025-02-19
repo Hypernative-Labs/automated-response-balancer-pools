@@ -35,6 +35,7 @@ contract BalancerHelper {
     }
 
     event PoolUpdated(uint256 index, address pool, string operation);
+    event PauseFailed(address pool);
 
     constructor(address newVault, address newKeeper, address newSafe) {
         // Step 0: Verify input
@@ -137,12 +138,13 @@ contract BalancerHelper {
         bytes memory callData = abi.encodeWithSelector(IPool.pause.selector);
         // Step 2: pause
         for (uint256 index = from; index < to; index++) {
-            GnosisSafe(payable(safe)).execTransactionFromModule(
+            bool success = GnosisSafe(payable(safe)).execTransactionFromModule(
                 pools[index],
                 0,
                 callData,
                 Enum.Operation.Call
             );
+            if (!success) emit PauseFailed(pools[index]);
         }
     }
 
