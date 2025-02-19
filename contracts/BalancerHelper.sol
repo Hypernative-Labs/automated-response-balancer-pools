@@ -94,7 +94,7 @@ contract BalancerHelper {
     function deleteAllPools() external keeperOrSafe {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; ++i) {
-            emit PoolUpdated(i, pools[i], "Deleted");
+            emit PoolUpdated(i, pools[pools.length - 1], "Deleted");
             pools.pop();
         }
         poolCount = 0;
