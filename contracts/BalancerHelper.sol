@@ -154,7 +154,7 @@ contract BalancerHelper {
 
     /// @notice Replaces the multisig address
     /// @param newSafe the address of the new gnosis safe
-    function updateSafe(address newSafe) external keeperOrSafe {
+    function updateSafe(address newSafe) external onlySafe {
         _expectNonZeroAddress(newSafe, "Zero address");
         safe = newSafe;
     }
