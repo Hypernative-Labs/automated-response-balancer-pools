@@ -21,6 +21,9 @@ contract BalancerHelper {
     /// @dev pool addresses hashmap
     address[] public pools;
 
+    /// @dev pool addresses hashmap
+    mapping (address pool => bool) isPoolPresent;
+
     modifier keeperOrSafe() {
         require(msg.sender == keeper || msg.sender == safe, ERROR_UNAUTHORIZED);
         _;
@@ -186,8 +189,11 @@ contract BalancerHelper {
         // Step 1: Verify input
         _expectContract(newPool, "poolId doesn't exist");
         // Step 2: Update storage
-        pools.push(newPool);
-        emit PoolUpdated(pools.length, newPool, "Added");
+        if (!isPoolPresent[newPool]) {
+            pools.push(newPool);
+            isPoolPresent[newPool] = true;
+            emit PoolUpdated(pools.length, newPool, "Added");
+        }
     }
 
     /// @dev A single pool deletion logic
@@ -199,6 +205,7 @@ contract BalancerHelper {
         pools[index] = pools[pools.length - 1];
         // Step 3: Delete the last item
         pools.pop();
+        isPoolPresent[deletedPool] = false;
         emit PoolUpdated(pools.length, deletedPool, "Deleted");
     }
 
