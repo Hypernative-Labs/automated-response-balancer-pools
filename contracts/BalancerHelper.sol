@@ -156,12 +156,12 @@ contract BalancerHelper {
     /// @notice Replaces the multisig address
     /// @param newSafe the address of the new gnosis safe
     function updateSafe(address newSafe) external onlySafe {
-        _expectNonZeroAddress(newSafe, "Zero address");
+        _expectContract(newSafe, "newSafe is not a contract");
         safe = newSafe;
     }
 
     function updateVault(address newVault) external onlySafe {
-        _expectNonZeroAddress(newVault, "Zero address");
+        _expectContract(newVault, "newVault is not a contract");
         vault = newVault;
     }
 
