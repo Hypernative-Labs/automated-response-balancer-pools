@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity 0.8.25;
 
 import {IPool} from "./interfaces/IPool.sol";
 import {Enum} from "./GnosisSafeL2/common/Enum.sol";
