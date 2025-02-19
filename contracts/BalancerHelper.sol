@@ -36,6 +36,9 @@ contract BalancerHelper {
 
     event PoolUpdated(uint256 index, address pool, string operation);
     event PauseFailed(address pool);
+    event SafeUpdated(address newSafe);
+    event KeeperUpdated(address newKeeper);
+    event VaultUpdated(address newVault);
 
     constructor(address newVault, address newKeeper, address newSafe) {
         // Step 0: Verify input
@@ -153,18 +156,24 @@ contract BalancerHelper {
     function updateKeeper(address newKeeper) external keeperOrSafe {
         _expectNonZeroAddress(newKeeper, "Zero address");
         keeper = newKeeper;
+        emit KeeperUpdated(newKeeper);
     }
 
     /// @notice Replaces the multisig address
-    /// @param newSafe the address of the new gnosis safe
+    /// @param newSafe the address of the new Gnosis Safe
     function updateSafe(address newSafe) external onlySafe {
         _expectContract(newSafe, "newSafe is not a contract");
         safe = newSafe;
+        emit SafeUpdated(newSafe);
     }
 
+
+    /// @notice Replaces the Balancer vault address
+    /// @param newVault the address of the new Balancer Vault
     function updateVault(address newVault) external onlySafe {
         _expectContract(newVault, "newVault is not a contract");
         vault = newVault;
+        emit VaultUpdated(newVault);
     }
 
     //      P R I V A T E   F U N C T I O N S
