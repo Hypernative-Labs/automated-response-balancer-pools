@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity 0.8.25;
 
 import {IPool} from "./interfaces/IPool.sol";
 import {Enum} from "./GnosisSafeL2/common/Enum.sol";
@@ -18,11 +18,11 @@ contract BalancerHelper {
     /// @notice Balancer Vault address
     address public vault;
 
-    /// @notice the next pool index
-    uint256 public poolCount;
-
     /// @dev pool addresses hashmap
     address[] public pools;
+
+    /// @dev pool addresses hashmap
+    mapping (address pool => bool) isPoolPresent;
 
     modifier keeperOrSafe() {
         require(msg.sender == keeper || msg.sender == safe, ERROR_UNAUTHORIZED);
@@ -35,6 +35,10 @@ contract BalancerHelper {
     }
 
     event PoolUpdated(uint256 index, address pool, string operation);
+    event PauseFailed(address pool);
+    event SafeUpdated(address newSafe);
+    event KeeperUpdated(address newKeeper);
+    event VaultUpdated(address newVault);
 
     constructor(address newVault, address newKeeper, address newSafe) {
         // Step 0: Verify input
@@ -59,7 +63,7 @@ contract BalancerHelper {
     function addPools(bytes32[] memory _poolIds) external keeperOrSafe {
         uint length = _poolIds.length;
 
-        for (uint256 index = 0; index < length; index++) {
+        for (uint256 index = 0; index < length; ++index) {
             _addPool(_poolIds[index]);
         }
     }
@@ -70,7 +74,7 @@ contract BalancerHelper {
         uint256 index
     ) external keeperOrSafe {
         // Step 0: Verify input
-        if (index >= poolCount) revert("Out of index range");
+        if (index >= pools.length) revert("Out of index range");
         // Step 1: Trigger the deletion logic
         _deletePool(index);
     }
@@ -94,17 +98,22 @@ contract BalancerHelper {
     function deleteAllPools() external keeperOrSafe {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; ++i) {
+            emit PoolUpdated(i, pools[pools.length - 1], "Deleted");
             pools.pop();
         }
-        poolCount = 0;
     }
 
     /// @notice Fetches a pool by its index
-    /// @dev reverts if index >= poolCount
+    /// @dev reverts if index >= pools.length
     /// @param index the requested pool index
     function getPool(uint256 index) public view returns (address pool) {
-        if (index >= poolCount) revert("Out of index range");
+        if (index >= pools.length) revert("Out of index range");
         pool = pools[index];
+    }
+
+    /// @notice Fetches the number of pools
+    function poolsLength() public view returns (uint256) {
+        return pools.length;
     }
 
     /// @notice Fetches an array of pool addresses
@@ -121,9 +130,9 @@ contract BalancerHelper {
         _pools = new address[](to - from);
         uint256 counter = 0;
         // Step 2: Populate the array
-        for (uint256 index = from; index < to; index++) {
+        for (uint256 index = from; index < to; ++index) {
             _pools[counter] = pools[index];
-            counter++;
+            ++counter;
         }
     }
 
@@ -135,13 +144,14 @@ contract BalancerHelper {
         (from, to) = _rangeCheck(from, to);
         bytes memory callData = abi.encodeWithSelector(IPool.pause.selector);
         // Step 2: pause
-        for (uint256 index = from; index < to; index++) {
-            GnosisSafe(payable(safe)).execTransactionFromModule(
+        for (uint256 index = from; index < to; ++index) {
+            bool success = GnosisSafe(payable(safe)).execTransactionFromModule(
                 pools[index],
                 0,
                 callData,
                 Enum.Operation.Call
             );
+            if (!success) emit PauseFailed(pools[index]);
         }
     }
 
@@ -150,18 +160,24 @@ contract BalancerHelper {
     function updateKeeper(address newKeeper) external keeperOrSafe {
         _expectNonZeroAddress(newKeeper, "Zero address");
         keeper = newKeeper;
+        emit KeeperUpdated(newKeeper);
     }
 
     /// @notice Replaces the multisig address
-    /// @param newSafe the address of the new gnosis safe
-    function updateSafe(address newSafe) external keeperOrSafe {
-        _expectNonZeroAddress(newSafe, "Zero address");
+    /// @param newSafe the address of the new Gnosis Safe
+    function updateSafe(address newSafe) external onlySafe {
+        _expectContract(newSafe, "newSafe is not a contract");
         safe = newSafe;
+        emit SafeUpdated(newSafe);
     }
 
+
+    /// @notice Replaces the Balancer vault address
+    /// @param newVault the address of the new Balancer Vault
     function updateVault(address newVault) external onlySafe {
-        _expectNonZeroAddress(newVault, "Zero address");
+        _expectContract(newVault, "newVault is not a contract");
         vault = newVault;
+        emit VaultUpdated(newVault);
     }
 
     //      P R I V A T E   F U N C T I O N S
@@ -173,21 +189,24 @@ contract BalancerHelper {
         // Step 1: Verify input
         _expectContract(newPool, "poolId doesn't exist");
         // Step 2: Update storage
-        pools.push(newPool);
-        poolCount++;
+        if (!isPoolPresent[newPool]) {
+            pools.push(newPool);
+            isPoolPresent[newPool] = true;
+            emit PoolUpdated(pools.length, newPool, "Added");
+        }
     }
 
     /// @dev A single pool deletion logic
     function _deletePool(uint256 index) private {
-        // Step 1: Decrement the counter
-        poolCount--;
+        // Step 1: Verify input
+        require(poolsLength() > 0, "No available pools");
         // Step 2: swap the last item with the removed one
-        emit PoolUpdated(index, pools[index], "Deleted");
-        
-        pools[index] = pools[poolCount];
-        
+        address deletedPool = pools[index];
+        pools[index] = pools[pools.length - 1];
         // Step 3: Delete the last item
         pools.pop();
+        isPoolPresent[deletedPool] = false;
+        emit PoolUpdated(pools.length, deletedPool, "Deleted");
     }
 
     /// @dev Reverts if `a` is address zero
@@ -209,9 +228,9 @@ contract BalancerHelper {
         uint256 from,
         uint256 to
     ) private view returns (uint256 _from, uint256 _to) {
-        if (poolCount == 0) revert("No available pools");
+        if (pools.length == 0) revert("No available pools");
         if (from >= to) revert("from is greater than to");
-        _to = to > poolCount ? poolCount : to;
+        _to = to > pools.length ? pools.length : to;
         _from = from;
     }
 }
