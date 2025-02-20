@@ -155,6 +155,21 @@ contract BalancerHelper {
         }
     }
 
+    /// @notice Pauses all the pools
+    function pauseAll() external keeperOrSafe {
+        uint256 length = pools.length;
+        bytes memory callData = abi.encodeWithSelector(IPool.pause.selector);
+        for (uint256 index; index < length; ++index) {
+            bool success = GnosisSafe(payable(safe)).execTransactionFromModule(
+                pools[index],
+                0,
+                callData,
+                Enum.Operation.Call
+            );
+            if (!success) emit PauseFailed(pools[index]);
+        }
+    }
+
     /// @notice Replaces the keeper address
     /// @param newKeeper the address of the new keeper
     function updateKeeper(address newKeeper) external keeperOrSafe {
