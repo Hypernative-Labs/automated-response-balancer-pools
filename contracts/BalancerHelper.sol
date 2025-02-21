@@ -94,12 +94,14 @@ contract BalancerHelper {
         }
     }
 
-        /// @notice Deletes all the pool addresses
+    /// @notice Deletes all the pool addresses
     function deleteAllPools() external keeperOrSafe {
         uint256 length = pools.length;
         for (uint256 i = 0; i < length; ++i) {
-            emit PoolUpdated(i, pools[pools.length - 1], "Deleted");
+            address deletedPool = pools[pools.length - 1];
             pools.pop();
+            isPoolPresent[deletedPool] = false;
+            emit PoolUpdated(pools.length, deletedPool, "Deleted");
         }
     }
 
@@ -207,7 +209,7 @@ contract BalancerHelper {
         if (!isPoolPresent[newPool]) {
             pools.push(newPool);
             isPoolPresent[newPool] = true;
-            emit PoolUpdated(pools.length, newPool, "Added");
+            emit PoolUpdated(pools.length - 1, newPool, "Added");
         }
     }
 
