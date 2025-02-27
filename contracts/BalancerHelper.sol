@@ -11,13 +11,11 @@ import {IVault} from "./interfaces/IVault.sol";
 ///
 /// PUBLIC ENTITIES:
 ///
-///         `keeper`            A trusted account empowered to trigger pausing in case of a security event
+///         `keeper`            A trusted EOA managed by a trusted WEB3 cyber security entity
 ///         `vault`             The address of the Balancer vault on the current chain
 ///         `pools`             An array of Balancer pool addresses where `safe` has the role required for pausing
-///         `safe`              A GnosisSafe multisig contract address
-///                                 1. Holds the roles in the pool contracts,
-///                                 2. Can freely change the contract's storage
-///                                 3. Can pause one or multiple pools for other than security reasons
+///         `safe`              A GnosisSafe multisig contract address managed by the Balancer team
+///                             `Safe` holds the roles in the pool contracts required for pausing / unpausing
 ///
 /// BUSINESS LOGIC:
 ///
@@ -28,15 +26,18 @@ import {IVault} from "./interfaces/IVault.sol";
 ///                             - `keeper`  Relevant for the current chain or the same for all EVMs
 ///                             - `safe`    Relevant for the current chain or the same for all EVMs
 ///
-///         `safe` alone can:
-///                             - Update the safe address
-///                             - Update the vault address
 ///
-///         `keeper` or `safe` can set / update / delete:
-///                             - One or multiple pools
-///                             - The keeper address
-/// 
-///         `keeper` or `safe` can pause one or multiple pools
+///         The `keeper` intended behavior:
+///
+///                 1. It pauses a range or all the `pools` in case of a detected security event.
+///                 2. Pools are added or deleted by the `keeper` only upon Balancer team requests.
+///                 3. The `keeper` can update the `keeper` but cannot replace the `vault` or the `safe` contract
+///
+///         The `safe` intended behavior:
+///
+///                 1. `Safe` can add or delete liquidity pools once there is a need
+///                 2. `Safe` can update the `safe`, the `keeper`, and the `vault`
+///                 3. `Safe` can pause one or multiple pools for security or business reasons
 ///
 ///
 /// PUBLIC FUNCTIONS:
