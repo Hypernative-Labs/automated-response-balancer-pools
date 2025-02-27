@@ -2,6 +2,9 @@
 pragma solidity 0.8.25;
 
 interface IBalancerHelper {
+    function addPool(bytes32 newPoolId) external;
+    function addPools(bytes32[] memory _poolIds) external;
+
     function updateSafe(address newSafe) external;
     function updateVault(address newVault) external;
     function pause(uint256 from, uint256 to) external;
@@ -21,6 +24,14 @@ contract MockSafe {
 
     constructor(address newOwner) {
         owner = newOwner;
+    }
+
+    function addPool(bytes32 newPoolId) external onlyOwner {
+        IBalancerHelper(module).addPool(newPoolId);
+    }
+
+    function addPools(bytes32[] memory _poolIds) external onlyOwner {
+        IBalancerHelper(module).addPools(_poolIds);
     }
 
     function updateSafe(address newSafe) external onlyOwner {
