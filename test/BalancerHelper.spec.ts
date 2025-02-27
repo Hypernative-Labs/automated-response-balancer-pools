@@ -327,6 +327,50 @@ describe("BalancerHelper", () => {
         expect(await balancerHelper.vault()).to.equal(vaultAddress);
 
     });
-    
+
+    it("16. Should NOT update vault with `newVault is not a contract`", async () => {
+
+        const { balancerHelper, keeper,  multisigWithSigner } = await loadFixture(deploy2);
+
+        await expect(multisigWithSigner.updateVault(keeper.address)).to.be.revertedWith("newVault is not a contract");
+
+    });
+
+    it("17. Should pause pools", async () => {
+
+        const { balancerHelper, keeper,  multisigWithSigner } = await loadFixture(deploy2);
+
+        await multisigWithSigner.pause(0,4);
+
+    });
+
+    it("18. Should pause All the pools", async () => {
+
+        const { balancerHelper, keeper,  multisigWithSigner } = await loadFixture(deploy2);
+
+        await multisigWithSigner.pauseAll();
+
+    });
+
+
+    it("19. Should NOT pause pools since already paused", async () => {
+
+        const { balancerHelper, keeper,  multisigWithSigner } = await loadFixture(deploy2);
+
+        await multisigWithSigner.pause(0,1);
+
+        await multisigWithSigner.pause(0,1);
+
+    });
+
+    it("20. Should pause All the pools", async () => {
+
+        const { balancerHelper, keeper,  multisigWithSigner } = await loadFixture(deploy2);
+
+        await multisigWithSigner.pauseAll();
+
+        await multisigWithSigner.pauseAll();
+
+    });
 
 });
