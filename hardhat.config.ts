@@ -1,7 +1,8 @@
-import { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+import type { HardhatUserConfig } from "hardhat/types";
 import "@nomicfoundation/hardhat-toolbox";
 import { readENV } from "./scripts/utils";
-
+import "hardhat-deploy";
 
 const SK: string = readENV("SK");
 const accounts = [SK];

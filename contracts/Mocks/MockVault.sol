@@ -58,9 +58,9 @@ contract MockVault {
             specialization,
             uint80(_nextPoolNonce)
         );
-        console.log("ONCHAIN registrating poolId", uint256(poolId));
+        // console.log("ONCHAIN registrating poolId", uint256(poolId));
         _nextPoolNonce += 1;
-        console.log("ONCHAIN: registrating poolAddress", pool);
+        // console.log("ONCHAIN: registrating poolAddress", pool);
         _isPoolRegistered[poolId] = true;
         return poolId;
     }
