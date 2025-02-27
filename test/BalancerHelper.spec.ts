@@ -2,18 +2,19 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
+const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 describe("BalancerHelper", () => {
     async function deploy() {
         var poolNonce = 0;
 
-        const [keeper, admin] = await ethers.getSigners();
+        const [owner, keeper] = await ethers.getSigners();
 
         const Vault = await ethers.getContractFactory("MockVault");
         const vault = await Vault.deploy();
         await vault.waitForDeployment();
 
-        const Multisig = await ethers.getContractFactory("GnosisSafe");
+        const Multisig = await ethers.getContractFactory("GnosisSafeL2");
         const multisig = await Multisig.deploy();
         await multisig.waitForDeployment();
 
@@ -21,9 +22,6 @@ describe("BalancerHelper", () => {
         const mockPool1 = await MockPool.deploy();
         await mockPool1.waitForDeployment();
         await vault.registerPool(await mockPool1.getAddress(), 0);
-        
-
-        
 
         const mockPool2 = await MockPool.deploy();
         await mockPool2.waitForDeployment();
@@ -61,18 +59,19 @@ describe("BalancerHelper", () => {
             await vault._toPoolId(await mockPool4.getAddress(), 0, 3)
         ]
 
+        await balancerHelper.connect(keeper).addPools(poolIds.slice(0,3));
 
-
-        await balancerHelper.connect(keeper).addPools(poolIds);
+        await balancerHelper.connect(keeper).addPool(poolIds[3]);
 
         return {
-            addresses, keeper, multisig, balancerHelper
+            addresses, keeper, multisig, balancerHelper, owner,
+            mockPool1
         }
     }
 
     async function deploy1() {
 
-        const [keeper, admin] = await ethers.getSigners();
+        const [keeper] = await ethers.getSigners();
 
         const Multisig = await ethers.getContractFactory("GnosisSafe");
         const multisig = await Multisig.deploy();
@@ -86,11 +85,13 @@ describe("BalancerHelper", () => {
         const Vault = await ethers.getContractFactory("MockVault");
         const vault = await Vault.deploy();
         await vault.waitForDeployment();
-        vault.registerPool(await mockPool1.getAddress(), 0);
+        await vault.registerPool(await mockPool1.getAddress(), 0);
 
         const BalancerHelper = await ethers.getContractFactory("BalancerHelper");
-        const balancerHelper = await BalancerHelper.deploy(vault.getAddress(),
-            keeper.address, await multisig.getAddress()
+        const balancerHelper = await BalancerHelper.deploy(
+            vault.getAddress(),
+            keeper.address, 
+            await multisig.getAddress()
         );
         await balancerHelper.waitForDeployment();
 
@@ -105,14 +106,14 @@ describe("BalancerHelper", () => {
         await balancerHelper.connect(keeper).addPools(poolIds);
 
         return {
-            addresses, keeper, multisig, balancerHelper
+            addresses, keeper, multisig, balancerHelper, BalancerHelper, vault,
         }
     }
 
     it("1. Should deploy the contract & populate the pools", async () => {
 
         const { balancerHelper, addresses } = await loadFixture(deploy);
-        console.log("addresses %s", addresses);
+        // console.log("addresses %s", addresses);
 
         const poolCount: bigint = await balancerHelper.poolsLength();
         expect(Number(poolCount.toString())).to.equal(addresses.length);
@@ -126,7 +127,7 @@ describe("BalancerHelper", () => {
         const { balancerHelper, keeper, addresses } = await loadFixture(deploy1);
 
         var poolCount: bigint = await balancerHelper.poolsLength();
-        console.log("poolcount %s", poolCount.toString());
+        // console.log("poolcount %s", poolCount.toString());
         expect(Number(poolCount.toString())).to.equal(1);
 
         await balancerHelper.connect(keeper).deletePool(0);
@@ -150,7 +151,7 @@ describe("BalancerHelper", () => {
 
     });
 
-    it("3. Should correctly delete a pool in the middle", async () => {
+    it("4. Should correctly delete a pool in the middle", async () => {
         const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
         await balancerHelper.connect(keeper).deletePool(1);
@@ -163,7 +164,7 @@ describe("BalancerHelper", () => {
 
     });
 
-    it("4. Should correctly delete the last pool", async () => {
+    it("5. Should correctly delete the last pool", async () => {
         const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
         await balancerHelper.connect(keeper).deletePool(2);
@@ -176,7 +177,7 @@ describe("BalancerHelper", () => {
 
     });
 
-    it("5. Should delete a range of pools", async () => {
+    it("6. Should delete a range of pools", async () => {
 
         const { balancerHelper, keeper, addresses } = await loadFixture(deploy);
 
@@ -184,17 +185,17 @@ describe("BalancerHelper", () => {
         expect(Number(poolCount.toString())).to.equal(addresses.length);
          
         var pools = await balancerHelper.getPools(0, 10);
-        console.log("pools %s", pools);
+        // console.log("pools %s", pools);
         await balancerHelper.connect(keeper).deletePools(0, 3);
 
         poolCount = await balancerHelper.poolsLength();
-        console.log("poolcount %s", poolCount.toString());
+        // console.log("poolcount %s", poolCount.toString());
         //expect(poolCount).to.equal(0n);
         pools = await balancerHelper.getPools(0, 10);
-        console.log("pools %s", pools);
+        // console.log("pools %s", pools);
     });
 
-    it("6. Should delete all the pools in one transaction", async () => {
+    it("7. Should delete all the pools in one transaction", async () => {
         const { balancerHelper, keeper } = await loadFixture(deploy);
         await balancerHelper.connect(keeper).deleteAllPools();
         const poolCount = await balancerHelper.poolsLength();
@@ -203,5 +204,58 @@ describe("BalancerHelper", () => {
             "No available pools"
         );
     });
+
+    it("8. Should not delete a pool due to `Out of index range`", async () => {
+        const { balancerHelper, keeper } = await loadFixture(deploy);
+
+        await expect(balancerHelper.connect(keeper).deletePool(4)).to.be.revertedWith("Out of index range");
+    });
+
+    it("9. Should not get a pool due to `Out of index range`", async () => {
+        const { balancerHelper, keeper } = await loadFixture(deploy);
+
+        await expect(balancerHelper.getPool(4)).to.be.revertedWith("Out of index range");
+    });
+
+    it("10. It should not deploy the contract `newKeeper is address zero`", async () => {
+
+        const { BalancerHelper, keeper, vault, multisig } = await loadFixture(deploy1);
+
+        await expect(BalancerHelper.deploy(
+            vault.getAddress(),
+            zeroAddress,
+            await multisig.getAddress()
+        )).to.be.revertedWith("newKeeper is address zero")
+
+    });
+
+    it("11. Should NOT update the keeper because of `Zero address`", async () => {
+
+        const { balancerHelper, keeper, vault, multisig } = await loadFixture(deploy1);
+
+        await expect( balancerHelper.connect(keeper).updateKeeper(zeroAddress))
+        .to.be.revertedWith("Zero address");
+
+    });
+
+    it("12. Should update the keeper and emit an event", async () => {
+
+        const { balancerHelper, keeper, vault, multisig } = await loadFixture(deploy1);
+
+         expect(await balancerHelper.connect(keeper).updateKeeper(keeper))
+         .to.emit(balancerHelper, "KeeperUpdated")
+         .withArgs(keeper.address);
+
+    });
+
+    
+    it("13. Should revert with `from is greater than to`", async () => {
+
+        const { balancerHelper, keeper, vault, multisig } = await loadFixture(deploy1);
+
+        await expect(balancerHelper.getPools(2,1)).to.be.revertedWith("from is greater than to")
+
+    });
+    
 
 });
