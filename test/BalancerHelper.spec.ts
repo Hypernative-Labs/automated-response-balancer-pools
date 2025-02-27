@@ -110,6 +110,53 @@ describe("BalancerHelper", () => {
         }
     }
 
+    async function deploy2() {
+
+        const [owner, keeper] = await ethers.getSigners();
+
+        const Multisig = await ethers.getContractFactory("MockSafe");
+        const multisig = await Multisig.deploy(owner.address);
+        await multisig.waitForDeployment();
+
+        const MockPool = await ethers.getContractFactory("MockPool");
+        const mockPool1 = await MockPool.deploy();
+        await mockPool1.waitForDeployment();
+        const multisigWithSigner = multisig.connect(owner);
+
+        const Vault = await ethers.getContractFactory("MockVault");
+        const vault = await Vault.deploy();
+        await vault.waitForDeployment();
+        await vault.registerPool(await mockPool1.getAddress(), 0);
+
+        const BalancerHelper = await ethers.getContractFactory("BalancerHelper");
+        const balancerHelper = await BalancerHelper.deploy(
+            vault.getAddress(),
+            keeper.address, 
+            await multisig.getAddress()
+        );
+        await balancerHelper.waitForDeployment();
+
+        const balancerHelperAddress = await balancerHelper.getAddress();
+
+        await multisigWithSigner.setModule(balancerHelperAddress);
+
+        console.log("")
+
+        const addresses: string[] = [
+            await mockPool1.getAddress(),
+        ]
+
+        const poolIds: string[] = [
+            await vault._toPoolId(await mockPool1.getAddress(), 0, 0),
+        ]
+
+        await balancerHelper.connect(keeper).addPools(poolIds);
+
+        return {
+            addresses, keeper, multisig, balancerHelper, BalancerHelper, vault, multisigWithSigner
+        }
+    }
+
     it("1. Should deploy the contract & populate the pools", async () => {
 
         const { balancerHelper, addresses } = await loadFixture(deploy);
@@ -254,6 +301,30 @@ describe("BalancerHelper", () => {
         const { balancerHelper, keeper, vault, multisig } = await loadFixture(deploy1);
 
         await expect(balancerHelper.getPools(2,1)).to.be.revertedWith("from is greater than to")
+
+    });
+
+    it("14. Should update safe", async () => {
+
+        const { balancerHelper, vault, multisigWithSigner } = await loadFixture(deploy2);
+
+        const vaultAddress = await vault.getAddress();
+
+        await multisigWithSigner.updateSafe(vaultAddress);
+
+        expect(await balancerHelper.safe()).to.equal(vaultAddress)
+
+    });
+
+    it("15. Should update vault", async () => {
+
+        const { balancerHelper, vault, multisigWithSigner } = await loadFixture(deploy2);
+
+        const vaultAddress = await vault.getAddress();
+
+        await multisigWithSigner.updateVault(vaultAddress);
+
+        expect(await balancerHelper.vault()).to.equal(vaultAddress);
 
     });
     
