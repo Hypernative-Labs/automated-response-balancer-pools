@@ -51,6 +51,7 @@ import {IVault} from "./interfaces/IVault.sol";
 ///         `getPools`          Fetches an array of pool addresses by the `from` & `to` indices
 ///         `poolsLength`       Fetches the number of items in the `pools` array
 ///         `pause`             Pauses a range of pools from the stored array by the `from` & `to` indices
+///         `pauseAll`          Pauses all the pools in the `pools` array
 ///         `updateKeeper`      Replaces the keeper address
 ///         `updateSafe`        Replaces the GnosisSafe address
 ///         `updateVault`       Replaces the vault address
@@ -96,7 +97,7 @@ contract BalancerHelper {
     /// @param operation the kind of change
     event PoolUpdated(uint256 index, address pool, string operation);
 
-    /// @dev Emitted when a pool paing failed
+    /// @dev Emitted when a pool pausing failed
     /// @param pool the address whose pausing failed
     event PauseFailed(address pool);
 
@@ -243,7 +244,7 @@ contract BalancerHelper {
         // Step 1: Verify input
         // Step 1.1: Ensure the `from` & `to` make sense for the `pools` array
         (from, to) = _rangeCheck(from, to);
-        // Step 1.1: Encode the low level call data for calling the `pause()` funciton
+        // Step 1.1: Encode the low level call data for calling the `pause()` function
         bytes memory callData = abi.encodeWithSelector(IPool.pause.selector);
         // Step 2: loop over the indices
         for (uint256 index = from; index < to; ++index) {
