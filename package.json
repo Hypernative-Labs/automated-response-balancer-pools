@@ -26,7 +26,6 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/ignition-core": "^0.15.10",
-    "@openzeppelin/contracts": "^3.4.2",
     "@safe-global/mock-contract": "^4.1.0",
     "@safe-global/safe-singleton-factory": "^1.0.33",
     "@typechain/ethers-v6": "^0.5.0",
